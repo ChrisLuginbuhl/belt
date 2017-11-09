@@ -1,67 +1,58 @@
-/*
-  Web client
-
-  This sketch connects to a website (http://www.google.com)
-  using a WiFi shield.
-
-  This example is written for a network using WPA encryption. For
-  WEP or WPA, change the WiFi.begin() call accordingly.
-
-  This example is written for a network using WPA encryption. For
-  WEP or WPA, change the WiFi.begin() call accordingly.
-
-  Circuit:
-   WiFi shield attached
-
-  created 13 July 2010
-  by dlf (Metodo2 srl)
-  modified 31 May 2012
-  by Tom Igoe
-*/
-
 
 #include <SPI.h>
 #include <WiFi101.h>
+#include <Adafruit_NeoPixel.h>
 #include "arduino_secrets.h"
 
-                          //Switch is 2P5T, with "0" position open circuit
-const int swPos1 = 9;     // Pin connected to switch terminal 1 
-const int swPos2 = 10;     // Pin connected to switch terminal 2 
-const int swPos3 = 11;     // Pin connected to switch terminal 3 
-const int swPos4 = 12;     // Pin connected to switch terminal 4 
+#define PIN 6
+#define STRIPSIZE 36
+
+//function prototypes - preprocessor seems to like to know up front.
+void doMode0();
+void doMode1();
+void doMode2();
+void doMode3();
+void doMode4();
+void printWiFiStatus();
+void callAdafruit();
+void rainbow(uint8_t wait);
+void rainbowCycle(uint8_t wait);
+void colorWipe(uint32_t c, uint8_t wait);
+void theaterChase(uint32_t c, uint8_t wait);
+void theaterChaseRainbow(uint8_t wait);
+uint32_t Wheel(byte WheelPos);
+
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(STRIPSIZE, PIN, NEO_GRB + NEO_KHZ800);
+//Switch is 2P5T, with "0" position open circuit
+const int swPos1 = 9;      // Pin connected to switch terminal 1
+const int swPos2 = 10;     // Pin connected to switch terminal 2
+const int swPos3 = 11;     // Pin connected to switch terminal 3
+const int swPos4 = 12;     // Pin connected to switch terminal 4
 const int swSend = 13;     // Pin connected to switch Send button (momentary)
 
 int switchPos = 0;        //will store rotary switch position 0-4
 int sendPressed = false;
 
-///////please enter your sensitive data in the Secret tab/arduino_secrets.h
-char ssid[] = SECRET_SSID;        // your network SSID (name)
-char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
-int keyIndex = 0;            // your network key Index number (needed only for WEP)
-
-int status = WL_IDLE_STATUS;
-// if you don't want to use DNS (and reduce your sketch size)
-// use the numeric IP instead of the name for the server:
-//IPAddress server(74,125,232,128);  // numeric IP for Google (no DNS)
-char server[] = "io.adafruit.com";    // name address for Google (using DNS)
-
-// Initialize the Ethernet client library
-// with the IP address and port of the server
-// that you want to connect to (port 80 is default for HTTP):
-WiFiClient client;
-
-
 void setup() {
- // initialize the switch & button pins as input. Switches connected to ground when closed.
+
+  // initialize the switch & button pins as input. Switches connected to ground when closed.
   pinMode(swSend, INPUT_PULLUP);
   pinMode(swPos1, INPUT_PULLUP);
   pinMode(swPos2, INPUT_PULLUP);
   pinMode(swPos3, INPUT_PULLUP);
   pinMode(swPos4, INPUT_PULLUP);
-  
+
+  WiFi.setPins(8, 7, 4, 2);
+
+  // Set up neopixels
+  strip.begin();
+  strip.setBrightness(25);  // Lower brightness and save eyeballs!
+  strip.show();             // Initialize all pixels to 'off'
+
+
   //Initialize serial and wait for port to open:
   Serial.begin(9600);
-  WiFi.setPins(8, 7, 4, 2);
+
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
@@ -72,72 +63,75 @@ void setup() {
     // don't continue:
     while (true);
   }
-
-  /*
-  // attempt to connect to WiFi network:
-  while (status != WL_CONNECTED) {
-    Serial.print("Attempting to connect to SSID: ");
-    Serial.println(ssid);
-    // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-    status = WiFi.begin(ssid, pass);
-
-    // wait 10 seconds for connection:
-    delay(10000);
-  }
-  Serial.println("Connected to wifi");
-  printWiFiStatus();
-
-  Serial.println("\nStarting connection to server...");
-  // if you get a connection, report back via serial:
-  if (client.connect(server, 80)) {
-    Serial.println("connected to server");
-    // Make a HTTP request:
-    //callAdafruit();
-  }
-*/
 }
 
 void loop() {
-  // if there are incoming bytes available
-  // from the server, read them and print them:
-  while (client.available()) {
-    char c = client.read();
-    Serial.write(c);
-  }
 
-  // if the server's disconnected, stop the client:
-  if (!client.connected()) {
-    Serial.println();
-    Serial.println("disconnecting from server.");
-    client.stop();
-
-    // do nothing forevermore:
-//    while (true);
-  }
-  //Serial.println(digitalRead(swPos2));
   if (digitalRead(swPos1) == LOW) {
-    switchPos = 1; 
+    switchPos = 1;
   } else if (digitalRead(swPos2) == LOW) {
-    switchPos = 2; 
+    switchPos = 2;
   } else if (digitalRead(swPos3) == LOW) {
-    switchPos = 3; 
+    switchPos = 3;
   } else if (digitalRead(swPos4) == LOW) {
     switchPos = 4;
   } else {
-    switchPos = 0; 
+    switchPos = 0;
   }
   if (digitalRead(swSend) == LOW) {
     sendPressed = true;
   } else {
     sendPressed = false;
   }
-  Serial.print("The switch position is: ");
-  Serial.println(switchPos);
-  Serial.print("Send pressed: ");
-  Serial.println(sendPressed);
-  delay(500);
+
+  switch (switchPos) {
+    case 0:
+      doMode0();
+      break;
+    case 1:
+      doMode1();
+      break;
+    case 2:
+      doMode2();
+      break;
+    case 3:
+      doMode3();
+      break;
+    case 4:
+      doMode4();
+      break;
+  }
+
+  /*
+    Serial.print("The switch position is: ");
+    Serial.println(switchPos);
+    Serial.print("Send pressed: ");
+    Serial.println(sendPressed);
+    delay(500);
+  */
 }
 
+void doMode0() {
+  colorWipe(strip.Color(0, 0, 0), 15); // Black (off)
+}
+
+void doMode1() {
+  rainbow(15);
+}
+
+void doMode2() {
+  rainbowCycle(15);
+}
+
+void doMode3() {
+  theaterChaseRainbow(50);
+}
+
+void doMode4() {
+  theaterChase(strip.Color(127, 0, 0), 50);
+  callAdafruit();
+  while (true);
+}
 
 void printWiFiStatus() {
   // print the SSID of the network you're attached to:
@@ -156,12 +150,137 @@ void printWiFiStatus() {
   Serial.println(" dBm");
 }
 
-void callAdafruit() {   
+void callAdafruit() {
+  ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
+  char ssid[] = SECRET_SSID;        // your network SSID (name)
+  char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
+  int keyIndex = 0;            // your network key Index number (needed only for WEP)
+
+  int status = WL_IDLE_STATUS;
+  char server[] = "io.adafruit.com";    // name address for Google (using DNS)
+  WiFiClient client;
+  // attempt to connect to WiFi network:
+  while (status != WL_CONNECTED) {
+    Serial.print("Attempting to connect to SSID: ");
+    Serial.println(ssid);
+    // Connect to WPA/WPA2 network. Would change this line if using open or WEP network:
+    status = WiFi.begin(ssid, pass);
+    // wait 10 seconds for connection:
+    delay(10000);
+  }
+  Serial.println("Connected to wifi");
+  printWiFiStatus();
+
+  Serial.println("\nStarting connection to server...");
+  // if you get a connection, report back via serial:
+  if (client.connect(server, 80)) {
+    Serial.println("connected to server");
+
+    // Make a HTTP request:
     client.println("GET /api/groups/luginbu/send.json?x-aio-key=d973c87082a34f29b9244f5ae6401cec&p5test=+39 HTTP/1.1");
     client.println("Host: io.adafruit.com");
     client.println("Connection: close");
     client.println();
+
+    // if there are incoming bytes available
+    // from the server, read them and print them:
+    while (client.available()) {
+      char c = client.read();
+      Serial.write(c);
+    }
+
+    // if the server's disconnected, stop the client:
+    if (!client.connected()) {
+      Serial.println();
+      Serial.println("disconnecting from server.");
+      client.stop();
+    }
+    // do nothing forevermore:
+    //    while (true);
   }
+}
 
+void rainbow(uint8_t wait) {
+  uint16_t i, j;
 
+  for (j = 0; j < 256; j++) {
+    for (i = 0; i < strip.numPixels(); i++) {
+      strip.setPixelColor(i, Wheel((i + j) & 255));
+    }
+    strip.show();
+    delay(wait);
+  }
+}
+
+void rainbowCycle(uint8_t wait) {
+  uint16_t i, j;
+
+  for (j = 0; j < 256 * 5; j++) { // 5 cycles of all colors on wheel
+    for (i = 0; i < strip.numPixels(); i++) {
+      strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
+    }
+    strip.show();
+    delay(wait);
+  }
+}
+
+// Fill the dots one after the other with a color
+void colorWipe(uint32_t c, uint8_t wait) {
+  for (uint16_t i = 0; i < strip.numPixels(); i++) {
+    strip.setPixelColor(i, c);
+    strip.show();
+    delay(wait);
+  }
+}
+
+//Theatre-style crawling lights.
+void theaterChase(uint32_t c, uint8_t wait) {
+  for (int j = 0; j < 1; j++) { //do 10 cycles of chasing
+    for (int q = 0; q < 3; q++) {
+      for (uint16_t i = 0; i < strip.numPixels(); i = i + 3) {
+        strip.setPixelColor(i + q, c);  //turn every third pixel on
+      }
+      strip.show();
+
+      delay(wait);
+
+      for (uint16_t i = 0; i < strip.numPixels(); i = i + 3) {
+        strip.setPixelColor(i + q, 0);      //turn every third pixel off
+      }
+    }
+  }
+}
+
+//Theatre-style crawling lights with rainbow effect
+void theaterChaseRainbow(uint8_t wait) {
+  for (int j = 0; j < 256; j++) {   // cycle all 256 colors in the wheel
+    for (int q = 0; q < 3; q++) {
+      for (uint16_t i = 0; i < strip.numPixels(); i = i + 3) {
+        strip.setPixelColor(i + q, Wheel( (i + j) % 255)); //turn every third pixel on
+      }
+      strip.show();
+
+      delay(wait);
+
+      for (uint16_t i = 0; i < strip.numPixels(); i = i + 3) {
+        strip.setPixelColor(i + q, 0);      //turn every third pixel off
+      }
+    }
+  }
+}
+
+// Input a value 0 to 255 to get a color value.
+// The colours are a transition r - g - b - back to r.
+uint32_t Wheel(byte WheelPos) {
+  WheelPos = 255 - WheelPos;
+  if (WheelPos < 85) {
+    return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
+  }
+  if (WheelPos < 170) {
+    WheelPos -= 85;
+    return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
+  }
+  WheelPos -= 170;
+  return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+}
 
