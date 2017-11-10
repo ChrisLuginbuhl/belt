@@ -13,6 +13,8 @@ void doMode1();
 void doMode2();
 void doMode3();
 void doMode4();
+void checkSwitches();
+boolean switchHasMoved();
 void printWiFiStatus();
 void callAdafruit();
 void rainbow(uint8_t wait);
@@ -49,40 +51,26 @@ void setup() {
   strip.setBrightness(25);  // Lower brightness and save eyeballs!
   strip.show();             // Initialize all pixels to 'off'
 
+  /*
+    //Initialize serial and wait for port to open:
+    Serial.begin(9600);
 
-  //Initialize serial and wait for port to open:
-  Serial.begin(9600);
-
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
-
+    while (!Serial) {
+      ; // wait for serial port to connect. Needed for native USB port only
+    }
+  */
   // check for the presence of the shield:
   if (WiFi.status() == WL_NO_SHIELD) {
     Serial.println("WiFi shield not present");
     // don't continue:
     while (true);
   }
+
 }
 
 void loop() {
 
-  if (digitalRead(swPos1) == LOW) {
-    switchPos = 1;
-  } else if (digitalRead(swPos2) == LOW) {
-    switchPos = 2;
-  } else if (digitalRead(swPos3) == LOW) {
-    switchPos = 3;
-  } else if (digitalRead(swPos4) == LOW) {
-    switchPos = 4;
-  } else {
-    switchPos = 0;
-  }
-  if (digitalRead(swSend) == LOW) {
-    sendPressed = true;
-  } else {
-    sendPressed = false;
-  }
+  checkSwitches();
 
   switch (switchPos) {
     case 0:
@@ -112,25 +100,60 @@ void loop() {
 }
 
 void doMode0() {
-  colorWipe(strip.Color(0, 0, 0), 15); // Black (off)
+  //turn off LEDs
+  colorWipe(strip.Color(0, 0, 0), 20); // Black (off)
 }
 
 void doMode1() {
+  //"approach me" display
   rainbow(15);
 }
 
 void doMode2() {
+  //"party time" display
   rainbowCycle(15);
 }
 
 void doMode3() {
-  theaterChaseRainbow(50);
+  //"I am struggling with my code" display
+  theaterChase(strip.Color(127, 0, 0), 50);
 }
 
 void doMode4() {
-  theaterChase(strip.Color(127, 0, 0), 50);
+  theaterChase(strip.Color(127, 127, 0), 50);
   callAdafruit();
   while (true);
+}
+
+void checkSwitches() {
+  if (digitalRead(swPos1) == LOW) {
+    switchPos = 1;
+  } else if (digitalRead(swPos2) == LOW) {
+    switchPos = 2;
+  } else if (digitalRead(swPos3) == LOW) {
+    switchPos = 3;
+  } else if (digitalRead(swPos4) == LOW) {
+    switchPos = 4;
+  } else {
+    switchPos = 0;
+  }
+  if (digitalRead(swSend) == LOW) {
+    sendPressed = true;
+  } else {
+    sendPressed = false;
+  }
+}
+
+//used to exit a colour animation if the mode switch is moved
+boolean switchHasMoved() {
+  int pos = switchPos;
+  checkSwitches();
+  //exit the for loop if the switch has been moved
+  if (pos != switchPos) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 void printWiFiStatus() {
@@ -161,20 +184,23 @@ void callAdafruit() {
   WiFiClient client;
   // attempt to connect to WiFi network:
   while (status != WL_CONNECTED) {
-    Serial.print("Attempting to connect to SSID: ");
-    Serial.println(ssid);
+    /*
+        Serial.print("Attempting to connect to SSID: ");
+        Serial.println(ssid);
+    */
     // Connect to WPA/WPA2 network. Would change this line if using open or WEP network:
     status = WiFi.begin(ssid, pass);
     // wait 10 seconds for connection:
     delay(10000);
   }
-  Serial.println("Connected to wifi");
-  printWiFiStatus();
-
-  Serial.println("\nStarting connection to server...");
-  // if you get a connection, report back via serial:
+  /*
+    Serial.println("Connected to wifi");
+    printWiFiStatus();
+    Serial.println("\nStarting connection to server...");
+    // if you get a connection, report back via serial:
+  */
   if (client.connect(server, 80)) {
-    Serial.println("connected to server");
+    //    Serial.println("connected to server");
 
     // Make a HTTP request:
     client.println("GET /api/groups/luginbu/send.json?x-aio-key=d973c87082a34f29b9244f5ae6401cec&p5test=+39 HTTP/1.1");
@@ -184,15 +210,18 @@ void callAdafruit() {
 
     // if there are incoming bytes available
     // from the server, read them and print them:
-    while (client.available()) {
-      char c = client.read();
-      Serial.write(c);
-    }
-
+    /*
+        while (client.available()) {
+          char c = client.read();
+          Serial.write(c);
+        }
+    */
     // if the server's disconnected, stop the client:
     if (!client.connected()) {
-      Serial.println();
-      Serial.println("disconnecting from server.");
+      /*
+            Serial.println();
+            Serial.println("disconnecting from server.");
+      */
       client.stop();
     }
     // do nothing forevermore:
@@ -208,6 +237,9 @@ void rainbow(uint8_t wait) {
       strip.setPixelColor(i, Wheel((i + j) & 255));
     }
     strip.show();
+    if (switchHasMoved()) {
+      break;
+    }
     delay(wait);
   }
 }
@@ -220,6 +252,9 @@ void rainbowCycle(uint8_t wait) {
       strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
     }
     strip.show();
+    if (switchHasMoved()) {
+      break;
+    }
     delay(wait);
   }
 }
@@ -241,7 +276,9 @@ void theaterChase(uint32_t c, uint8_t wait) {
         strip.setPixelColor(i + q, c);  //turn every third pixel on
       }
       strip.show();
-
+      if (switchHasMoved()) {
+        break;
+      }
       delay(wait);
 
       for (uint16_t i = 0; i < strip.numPixels(); i = i + 3) {
@@ -259,7 +296,9 @@ void theaterChaseRainbow(uint8_t wait) {
         strip.setPixelColor(i + q, Wheel( (i + j) % 255)); //turn every third pixel on
       }
       strip.show();
-
+      if (switchHasMoved()) {
+        break;
+      }
       delay(wait);
 
       for (uint16_t i = 0; i < strip.numPixels(); i = i + 3) {
