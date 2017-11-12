@@ -1,3 +1,22 @@
+    /*******************************************************           
+    * Dwell Belt --  Down with distractions, up with pants *   
+    *                                                      *
+    * DIGF-6037-001 Creation & Computation                 *                                       
+    *                                                      *  
+    * Assignment 3 Nov 10, 201                             *
+    *                                                      * 
+    * Chris Luginbuhl .                                    *   
+    *                                                      *   
+    * Purpose:  For use with the dwell belt, manages       *
+    * switches, animations and wifi activiity              *   
+    *                                                      *   
+    * Usage:                                               *   
+    *  requires wifi credentials in adruino_secrets.h      *
+    *  Remove /* symbols for serial port output            *
+    *                                                      *
+    * Credits: Makes use of Adafruit's wifi101 WiFiClient  *
+    * and strandtest (neopixel) example                    *
+    ********************************************************/  
 
 #include <SPI.h>
 #include <WiFi101.h>
