@@ -22,6 +22,9 @@ void rainbowCycle(uint8_t wait);
 void colorWipe(uint32_t c, uint8_t wait);
 void theaterChase(uint32_t c, uint8_t wait);
 void theaterChaseRainbow(uint8_t wait);
+void colourInnerRing(uint32_t c, uint8_t wait);
+void colourMiddleRing(uint32_t c, uint8_t wait);
+void colourOuterRing(uint32_t c, uint8_t wait);
 uint32_t Wheel(byte WheelPos);
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(STRIPSIZE, PIN, NEO_GRB + NEO_KHZ800);
@@ -106,23 +109,103 @@ void doMode0() {
 
 void doMode1() {
   //"approach me" display
-  rainbow(15);
+  //rainbow(15);
+
+  while (true) {
+    for (int i = 0; i < 256; i += 4) {
+      colourOuterRing(Wheel(i), 0);
+      colourMiddleRing(Wheel(i + 32), 0);
+      colourInnerRing(Wheel(i + 64), 0);
+    }
+    strip.show();
+    if (switchHasMoved()) {
+      break;
+    }
+  }
 }
 
 void doMode2() {
   //"party time" display
-  rainbowCycle(15);
+  theaterChaseRainbow(65);
 }
 
 void doMode3() {
   //"I am struggling with my code" display
-  theaterChase(strip.Color(127, 0, 0), 50);
+  theaterChase(strip.Color(255, 0, 0), 50);
 }
 
 void doMode4() {
-  theaterChase(strip.Color(127, 127, 0), 50);
-  callAdafruit();
-  while (true);
+
+  //"Coding emergency" display + call for help via Facebook
+  int wait = 100;
+  int i;
+  int j;
+
+  //Red rings converge on Send button. Silly if() statements are checking if the button was pressed.
+  while (!sendPressed) {
+    colourOuterRing(strip.Color(255, 0, 0), 0);
+    strip.show();
+    delay(wait);
+    colourOuterRing(strip.Color(0, 0, 0), 0);
+    colourMiddleRing(strip.Color(255, 0, 0), 0);
+    strip.show();
+    delay(wait);
+    if (digitalRead(swSend) == LOW) {
+      sendPressed = true;
+      break;
+    }
+    colourMiddleRing(strip.Color(0, 0, 0), 0);
+    colourInnerRing(strip.Color(255, 0, 0), 0);
+    strip.show();
+    delay(wait);
+    colourInnerRing(strip.Color(0, 0, 0), 0);
+    delay(wait);
+    if (digitalRead(swSend) == LOW) {
+      sendPressed = true;
+      break;
+    }
+    delay(wait);
+    if (digitalRead(swSend) == LOW) {
+      sendPressed = true;
+      break;
+    }
+    delay(wait);
+    if (digitalRead(swSend) == LOW) {
+      sendPressed = true;
+      break;
+    }
+    delay(wait);
+    if (digitalRead(swSend) == LOW) {
+      sendPressed = true;
+      break;
+    }
+    if (switchHasMoved()) {
+      break;
+    }
+
+  }
+
+  if (sendPressed) {
+    callAdafruit();  //She'll know what to do.
+
+    // fade soothing green lights  until help arrives or the universe ends.
+    while (true) {
+      for (i = 0; i < 256; i += 4) {
+        for (j = 0; j < strip.numPixels(); j++) {
+          strip.setPixelColor(j, strip.Color(0, i, 0));
+        }
+        strip.show();
+        delay(20);
+      }
+      for (i = 0; i < 256; i += 4) {
+        for (j = 0; j < strip.numPixels(); j++) {
+          strip.setPixelColor(j, strip.Color(0, 255 - i, 0));
+        }
+        strip.show();
+        delay(20);
+      }
+    }
+  }
 }
 
 void checkSwitches() {
@@ -183,15 +266,24 @@ void callAdafruit() {
   char server[] = "io.adafruit.com";    // name address for Google (using DNS)
   WiFiClient client;
   // attempt to connect to WiFi network:
+
+  colorWipe(strip.Color(0, 0, 0), 5);
+  colorWipe(strip.Color(255, 191, 0), 40);
   while (status != WL_CONNECTED) {
     /*
         Serial.print("Attempting to connect to SSID: ");
         Serial.println(ssid);
     */
+    colorWipe(strip.Color(255, 191, 0), 40);
     // Connect to WPA/WPA2 network. Would change this line if using open or WEP network:
     status = WiFi.begin(ssid, pass);
     // wait 10 seconds for connection:
-    delay(10000);
+    delay(3000);
+    colourInnerRing(strip.Color(0, 255, 0), 50);
+    delay(3500);
+    colourMiddleRing(strip.Color(0, 255, 0), 50);
+    delay(3500);
+
   }
   /*
     Serial.println("Connected to wifi");
@@ -199,15 +291,16 @@ void callAdafruit() {
     Serial.println("\nStarting connection to server...");
     // if you get a connection, report back via serial:
   */
+
   if (client.connect(server, 80)) {
     //    Serial.println("connected to server");
 
-    // Make a HTTP request:
-    client.println("GET /api/groups/luginbu/send.json?x-aio-key=d973c87082a34f29b9244f5ae6401cec&p5test=+39 HTTP/1.1");
+    // Make a HTTP request. A data value of 42 posts to the Digital Futures 2019 facebook group. Any other value posts to my test group.
+    client.println("GET /api/groups/luginbu/send.json?x-aio-key=d973c87082a34f29b9244f5ae6401cec&p5test=+42 HTTP/1.1");
     client.println("Host: io.adafruit.com");
     client.println("Connection: close");
     client.println();
-
+    colourOuterRing(strip.Color(0, 255, 0), 50);
     // if there are incoming bytes available
     // from the server, read them and print them:
     /*
@@ -290,7 +383,7 @@ void theaterChase(uint32_t c, uint8_t wait) {
 
 //Theatre-style crawling lights with rainbow effect
 void theaterChaseRainbow(uint8_t wait) {
-  for (int j = 0; j < 256; j++) {   // cycle all 256 colors in the wheel
+  for (int j = 0; j < 256; j += 6) {   // cycle all 256 colors in the wheel
     for (int q = 0; q < 3; q++) {
       for (uint16_t i = 0; i < strip.numPixels(); i = i + 3) {
         strip.setPixelColor(i + q, Wheel( (i + j) % 255)); //turn every third pixel on
@@ -307,6 +400,31 @@ void theaterChaseRainbow(uint8_t wait) {
     }
   }
 }
+
+// Fill the inner ring dots one after the other with a color
+void colourInnerRing(uint32_t c, uint8_t wait) {
+  for (uint16_t i = 0; i < 8; i++) {
+    strip.setPixelColor(i, c);
+    strip.show();
+    delay(wait);
+  }
+}
+void colourMiddleRing(uint32_t c, uint8_t wait) {
+  for (uint16_t i = 8; i < 20; i++) {
+    strip.setPixelColor(i, c);
+    strip.show();
+    delay(wait);
+  }
+}
+
+void colourOuterRing(uint32_t c, uint8_t wait) {
+  for (uint16_t i = 20; i < 36; i++) {
+    strip.setPixelColor(i, c);
+    strip.show();
+    delay(wait);
+  }
+}
+
 
 // Input a value 0 to 255 to get a color value.
 // The colours are a transition r - g - b - back to r.
